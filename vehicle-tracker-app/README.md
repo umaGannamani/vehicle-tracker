@@ -1,16 +1,27 @@
-# React + Vite
+# Vehicle Tracker App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
+Frontend-only React app that simulates a vehicle moving along a predefined route using React-Leaflet and Tailwind CSS. Marker animates smoothly along a polyline, rotates to heading, and control panel provides play/pause/reset and metadata.
 
-Currently, two official plugins are available:
+## Install & Run
+1. `npm install`
+2. `npm run dev`
+3. Open http://localhost:5173
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Build
+`npm run build`
 
-## React Compiler
+## Files
+- `public/dummy-route.json` — route data (lat, lng, timestamp)
+- `src/components/VehicleMap.jsx` — main map and controls integration
+- `src/components/AnimatedMarker.jsx` — smooth interpolation and rotation
+- `src/components/Controls.jsx` — UI controls
+- `src/utils/calculate.js` — distance / speed helpers
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Notes
+- Uses OpenStreetMap tiles. To get snapped-to-road routes, use Mapbox/OSRM map matching and replace `dummy-route.json`.
+- For production, consider using a paid tile provider for higher fidelity and attribution.
 
-## Expanding the ESLint configuration
+## Live Demo
+<PUT YOUR DEPLOYED LINK HERE>
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

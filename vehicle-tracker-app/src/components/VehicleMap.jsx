@@ -1,49 +1,27 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Polyline,
-  Marker,
-  useMapEvents,
-  useMap,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import AnimatedMarker from "./AnimatedMarker";
+import Controls from "./Controls";
+import { calculateSpeedKmH } from "../utils/calculate";
 
-// 🚗 Rotating car icon (no white box)
-function RotatingMarker({ position, rotation }) {
-  const adjustedRotation = rotation + 90;
-
-  const icon = L.divIcon({
-    html: `<div style="
-      transform: translate(-50%, -50%) rotate(${adjustedRotation}deg);
-      font-size: 30px;
-    ">🚗</div>`,
-    iconSize: [30, 30],
-    className: "car-icon",
-  });
-
-  return <Marker position={position} icon={icon} />;
-}
-
-// 📍 Fit map bounds initially
+// 🗺️ Fit bounds only once
 function FitBoundsOnce({ coords }) {
   const map = useMap();
-  const hasFitted = useRef(false);
-
+  const fitted = useRef(false);
   useEffect(() => {
-    if (!hasFitted.current && coords.length > 0) {
+    if (!fitted.current && coords.length) {
       const bounds = L.latLngBounds(coords);
       map.fitBounds(bounds, { padding: [50, 50] });
-      map.setZoom(17); // 🔍 Start closer for detailed street view
-      hasFitted.current = true;
+      map.setZoom(18);
+      fitted.current = true;
     }
   }, [coords, map]);
-
   return null;
 }
 
-// 🚘 Auto-follow car while playing
+// 🚘 Follow car during play
 function AutoFollow({ isPlaying, position }) {
   const map = useMap();
   const userInteracted = useRef(false);
@@ -55,10 +33,9 @@ function AutoFollow({ isPlaying, position }) {
 
   useEffect(() => {
     if (isPlaying && position && !userInteracted.current) {
-      map.panTo(position, { animate: true, duration: 1.2 });
-      map.setZoom(18); // 🔎 Zoom in even more while following
+      map.panTo(position, { animate: true, duration: 1 });
     }
-  }, [position, isPlaying, map]);
+  }, [isPlaying, position, map]);
 
   return null;
 }
@@ -69,7 +46,6 @@ export default function VehicleMap({ dataUrl = "/dummy-route.json" }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const intervalRef = useRef(null);
 
-  // Load route from JSON
   useEffect(() => {
     fetch(dataUrl)
       .then((res) => res.json())
@@ -81,23 +57,24 @@ export default function VehicleMap({ dataUrl = "/dummy-route.json" }) {
         }));
         setRoute(formatted);
       })
-      .catch((err) => console.error("Failed to load route data:", err));
+      .catch((e) => console.error("Error loading route:", e));
   }, [dataUrl]);
 
-  // Animation interval
   useEffect(() => {
     if (isPlaying && route.length > 1 && currentIndex < route.length - 1) {
-      intervalRef.current = setInterval(() => {
-        setCurrentIndex((i) => Math.min(i + 1, route.length - 1));
-      }, 1500);
+      const t1 = new Date(route[currentIndex].timestamp).getTime();
+      const t2 = new Date(route[currentIndex + 1].timestamp).getTime();
+      const intervalMs = Math.max(t2 - t1, 1200); // fallback if missing timestamps
+      intervalRef.current = setTimeout(() => {
+        setCurrentIndex((i) => i + 1);
+      }, intervalMs);
     } else {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+      clearTimeout(intervalRef.current);
     }
-    return () => clearInterval(intervalRef.current);
-  }, [isPlaying, route, currentIndex]);
+    return () => clearTimeout(intervalRef.current);
+  }, [isPlaying, currentIndex, route]);
 
-  const handlePlayPause = () => setIsPlaying((v) => !v);
+  const handlePlayPause = () => setIsPlaying((p) => !p);
   const handleReset = () => {
     setIsPlaying(false);
     setCurrentIndex(0);
@@ -105,101 +82,51 @@ export default function VehicleMap({ dataUrl = "/dummy-route.json" }) {
 
   const fullCoords = route.map((p) => [p.lat, p.lng]);
   const traveledCoords = route.slice(0, currentIndex + 1).map((p) => [p.lat, p.lng]);
-  const currentPoint = route[currentIndex] || route[0] || { lat: 0, lng: 0 };
 
-  // 🔄 Calculate rotation direction
-  const calculateBearing = (start, end) => {
-    const toRad = (deg) => (deg * Math.PI) / 180;
-    const toDeg = (rad) => (rad * 180) / Math.PI;
-    const y = Math.sin(toRad(end.lng - start.lng)) * Math.cos(toRad(end.lat));
-    const x =
-      Math.cos(toRad(start.lat)) * Math.sin(toRad(end.lat)) -
-      Math.sin(toRad(start.lat)) *
-        Math.cos(toRad(end.lat)) *
-        Math.cos(toRad(end.lng - start.lng));
-    return (toDeg(Math.atan2(y, x)) + 360) % 360;
-  };
-
-  const rotation =
-    currentIndex < route.length - 1
-      ? calculateBearing(route[currentIndex], route[currentIndex + 1])
-      : 0;
+  const currentPoint = route[currentIndex] || route[0];
+  const nextPoint = route[currentIndex + 1] || route[currentIndex];
+  const speed = calculateSpeedKmH(currentIndex, route);
 
   return (
-    <div className="w-full h-full relative">
+    <div className="relative w-full h-full">
       <MapContainer
         center={[17.385044, 78.486671]}
-        zoom={17} // 🌆 Start zoomed in to see streets
-        scrollWheelZoom={true}
+        zoom={18}
+        scrollWheelZoom
         className="h-screen w-full"
       >
-        {/* 🗺️ High-detail map tiles */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
         />
 
-        {/* Full route (gray line) */}
+        {/* Full route in gray */}
         {fullCoords.length > 0 && (
-          <Polyline
-            positions={fullCoords}
-            pathOptions={{ color: "gray", weight: 3, opacity: 0.5 }}
-          />
+          <Polyline positions={fullCoords} pathOptions={{ color: "gray", weight: 3 }} />
         )}
 
-        {/* Traveled route (red line) */}
+        {/* Traveled route in red */}
         {traveledCoords.length > 0 && (
-          <Polyline
-            positions={traveledCoords}
-            pathOptions={{ color: "red", weight: 5, opacity: 0.9 }}
-          />
+          <Polyline positions={traveledCoords} pathOptions={{ color: "red", weight: 5 }} />
         )}
 
-        {/* 🚗 Rotating marker */}
-        <RotatingMarker position={[currentPoint.lat, currentPoint.lng]} rotation={rotation} />
+        {/* Animated car moving over line */}
+        {currentPoint && nextPoint && (
+          <AnimatedMarker start={currentPoint} end={nextPoint} duration={1200} />
+        )}
 
-        {/* Fit once at start */}
         <FitBoundsOnce coords={fullCoords} />
-
-        {/* Follow car */}
-        <AutoFollow
-          isPlaying={isPlaying}
-          position={L.latLng(currentPoint.lat, currentPoint.lng)}
-        />
+        <AutoFollow isPlaying={isPlaying} position={L.latLng(currentPoint)} />
       </MapContainer>
 
-      {/* 🧭 Control panel */}
-      <div className="absolute top-4 right-4 z-[1000] p-4 bg-white shadow-lg rounded-lg w-max">
-        <h2 className="font-bold mb-2">Vehicle Status</h2>
-        <div className="text-sm">
-          <p>
-            <strong>Coords:</strong>{" "}
-            <span className="font-mono">
-              {currentPoint.lat.toFixed(6)}, {currentPoint.lng.toFixed(6)}
-            </span>
-          </p>
-          <p>
-            <strong>Time:</strong>{" "}
-            {currentPoint.timestamp ? currentPoint.timestamp.toLocaleTimeString() : "N/A"}
-          </p>
-        </div>
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={handlePlayPause}
-            className={`px-4 py-2 rounded ${
-              isPlaying ? "bg-red-500 text-white" : "bg-green-500 text-white"
-            }`}
-          >
-            {isPlaying ? "Pause" : "Play"}
-          </button>
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 bg-gray-200 rounded text-gray-800"
-          >
-            Reset
-          </button>
-        </div>
-      </div>
+      {/* Controls */}
+      <Controls
+        isPlaying={isPlaying}
+        togglePlay={handlePlayPause}
+        reset={handleReset}
+        currentPoint={currentPoint}
+        speed={speed}
+      />
     </div>
   );
 }

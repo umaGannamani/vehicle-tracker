@@ -1,39 +1,42 @@
-import React from 'react';
+import React from "react";
 
 export default function Controls({
   isPlaying,
   togglePlay,
   reset,
-  currentPosition,
-  currentSpeed
+  currentPoint,
+  speed,
 }) {
-  const lat = currentPosition?.lat?.toFixed?.(6) ?? '-';
-  const lng = currentPosition?.lng?.toFixed?.(6) ?? '-';
-  const ts = currentPosition?.timestamp ? new Date(currentPosition.timestamp).toLocaleTimeString() : '-';
+  const lat = currentPoint?.lat?.toFixed(6) ?? "-";
+  const lng = currentPoint?.lng?.toFixed(6) ?? "-";
+  const ts = currentPoint?.timestamp
+    ? new Date(currentPoint.timestamp).toLocaleTimeString()
+    : "-";
 
   return (
-    <div className="absolute top-4 right-4 z-50 p-4 bg-white/95 shadow-lg rounded-lg w-full max-w-xs">
+    <div className="absolute top-4 right-4 z-[1000] p-4 bg-white/95 shadow-lg rounded-lg w-72">
       <h3 className="text-lg font-semibold mb-2">Vehicle Status</h3>
-
       <div className="text-sm space-y-1">
-        <p>Coordinates:
-          <span className="font-mono ml-2 text-blue-600">{lat}, {lng}</span>
+        <p>
+          <span className="font-semibold">Coords:</span>{" "}
+          <span className="font-mono text-blue-600">{lat}, {lng}</span>
         </p>
-        <p>Timestamp:
-          <span className="ml-2">{ts}</span>
+        <p>
+          <span className="font-semibold">Time:</span> {ts}
         </p>
-        <p>Speed:
-          <span className="ml-2">{Number(currentSpeed).toFixed(2)} km/h</span>
+        <p>
+          <span className="font-semibold">Speed:</span>{" "}
+          {speed.toFixed(2)} km/h
         </p>
       </div>
-
       <div className="mt-4 flex gap-2">
         <button
           onClick={togglePlay}
-          className="flex-1 px-4 py-2 rounded-lg text-white font-semibold"
-          style={{ backgroundColor: isPlaying ? '#ef4444' : '#16a34a' }}
+          className={`flex-1 px-4 py-2 rounded-lg font-semibold text-white ${
+            isPlaying ? "bg-red-500" : "bg-green-600"
+          }`}
         >
-          {isPlaying ? 'Pause' : 'Play'}
+          {isPlaying ? "Pause" : "Play"}
         </button>
         <button
           onClick={reset}
