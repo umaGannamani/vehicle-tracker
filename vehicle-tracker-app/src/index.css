@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* simple height helper for the map */
+html, body, #root {
+  height: 100%;
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
